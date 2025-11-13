@@ -12,7 +12,7 @@ class LeaveRequestController extends Controller
 {
     public function __construct()
     {
-        $this->authorizeResource(LeaveRequest::class, 'leave_request');
+        // Authorization will be handled in routes or individual methods
     }
 
     /**
@@ -22,10 +22,30 @@ class LeaveRequestController extends Controller
     {
         $user = $request->user();
 
-        $leaveRequests = LeaveRequest::with(['manager'])
-            ->where('user_id', $user->id)
-            ->orderByDesc('submitted_at')
-            ->paginate(15);
+        $query = LeaveRequest::with(['manager'])
+            ->where('user_id', $user->id);
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by leave type
+        if ($request->filled('leave_type')) {
+            $query->where('leave_type', $request->leave_type);
+        }
+
+        // Filter by date range
+        if ($request->filled('start_date')) {
+            $query->where('start_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->where('end_date', '<=', $request->end_date);
+        }
+
+        $leaveRequests = $query->orderByDesc('submitted_at')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('leave-requests.index', [
             'leaveRequests' => $leaveRequests,
@@ -100,10 +120,14 @@ class LeaveRequestController extends Controller
      */
     public function cancel(Request $request, LeaveRequest $leaveRequest): RedirectResponse
     {
-        $this->authorize('cancel', $leaveRequest);
+        // Check if user owns this request
+        if ($leaveRequest->user_id !== $request->user()->id) {
+            abort(403, 'You can only cancel your own requests.');
+        }
 
-        if ($leaveRequest->isCancelled() || $leaveRequest->isDenied()) {
-            return back()->withErrors(['status' => 'This request cannot be cancelled.']);
+        // Check if request can be cancelled
+        if ($leaveRequest->status !== 'pending') {
+            return back()->withErrors(['status' => 'Only pending requests can be cancelled.']);
         }
 
         $leaveRequest->update([

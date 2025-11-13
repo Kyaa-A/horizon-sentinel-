@@ -170,6 +170,7 @@ class ConflictDetectionService
 
     /**
      * Calculate team availability for a given date range.
+     * Returns average daily availability across the period.
      */
     public function calculateTeamAvailability(int $managerId, Carbon $startDate, Carbon $endDate): array
     {
@@ -185,20 +186,35 @@ class ConflictDetectionService
             ];
         }
 
-        // Count unique employees on leave during this period
-        $onLeaveCount = LeaveRequest::forManager($managerId)
+        // Calculate average daily availability
+        $totalDays = $startDate->diffInDays($endDate) + 1;
+        $totalPersonDays = $teamSize * $totalDays;
+
+        // Get all leaves in the period
+        $leaves = LeaveRequest::forManager($managerId)
             ->whereIn('status', ['approved', 'pending'])
             ->overlapping($startDate->format('Y-m-d'), $endDate->format('Y-m-d'))
-            ->distinct('user_id')
-            ->count('user_id');
+            ->get();
 
-        $availableCount = $teamSize - $onLeaveCount;
-        $percentage = ($availableCount / $teamSize) * 100;
+        // Count total leave days
+        $totalLeaveDays = 0;
+        foreach ($leaves as $leave) {
+            $leaveStart = max($leave->start_date, $startDate);
+            $leaveEnd = min($leave->end_date, $endDate);
+            $totalLeaveDays += $leaveStart->diffInDays($leaveEnd) + 1;
+        }
+
+        $availablePersonDays = $totalPersonDays - $totalLeaveDays;
+        $averageAvailable = $availablePersonDays / $totalDays;
+        $percentage = ($averageAvailable / $teamSize) * 100;
+
+        // Count unique people with leave for display
+        $uniqueOnLeave = $leaves->unique('user_id')->count();
 
         return [
             'team_size' => $teamSize,
-            'available' => $availableCount,
-            'on_leave' => $onLeaveCount,
+            'available' => round($averageAvailable, 1),
+            'on_leave' => $uniqueOnLeave,
             'percentage' => round($percentage, 1),
         ];
     }

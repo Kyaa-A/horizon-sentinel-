@@ -6,11 +6,48 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    if (auth()->check()) {
+        // Redirect authenticated users based on role
+        if (auth()->user()->isManager()) {
+            return redirect()->route('manager.dashboard');
+        }
+        return redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $user = auth()->user();
+
+    // Get user's leave request statistics
+    $totalRequests = $user->leaveRequests()->count();
+    $pendingRequests = $user->leaveRequests()->where('status', 'pending')->count();
+    $approvedRequests = $user->leaveRequests()->where('status', 'approved')->count();
+    $deniedRequests = $user->leaveRequests()->where('status', 'denied')->count();
+
+    // Get upcoming approved leaves
+    $upcomingLeaves = $user->leaveRequests()
+        ->where('status', 'approved')
+        ->where('start_date', '>=', now())
+        ->orderBy('start_date')
+        ->limit(5)
+        ->get();
+
+    // Get recent requests
+    $recentRequests = $user->leaveRequests()
+        ->with('manager')
+        ->orderBy('created_at', 'desc')
+        ->limit(5)
+        ->get();
+
+    return view('dashboard', compact(
+        'totalRequests',
+        'pendingRequests',
+        'approvedRequests',
+        'deniedRequests',
+        'upcomingLeaves',
+        'recentRequests'
+    ));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -30,6 +67,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/requests/{leave_request}/approve', [ManagerController::class, 'approve'])->name('approve');
         Route::post('/requests/{leave_request}/deny', [ManagerController::class, 'deny'])->name('deny');
         Route::get('/team-calendar', [ManagerController::class, 'teamCalendar'])->name('team-calendar');
+        Route::get('/team-status', [ManagerController::class, 'teamStatus'])->name('team-status');
     });
 });
 

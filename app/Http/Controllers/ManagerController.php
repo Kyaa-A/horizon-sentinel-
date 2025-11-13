@@ -12,14 +12,17 @@ class ManagerController extends Controller
 {
     public function __construct(protected ConflictDetectionService $conflictService)
     {
-        // Ensure only managers can access these methods
-        $this->middleware(function ($request, $next) {
-            if (! $request->user()->isManager()) {
-                abort(403, 'Access denied. Manager privileges required.');
-            }
+        //
+    }
 
-            return $next($request);
-        });
+    /**
+     * Check if the user is a manager.
+     */
+    protected function ensureManager(Request $request): void
+    {
+        if (! $request->user()->isManager()) {
+            abort(403, 'Access denied. Manager privileges required.');
+        }
     }
 
     /**
@@ -27,6 +30,7 @@ class ManagerController extends Controller
      */
     public function dashboard(Request $request): View
     {
+        $this->ensureManager($request);
         $user = $request->user();
 
         // Get statistics
@@ -80,6 +84,7 @@ class ManagerController extends Controller
      */
     public function pendingRequests(Request $request): View
     {
+        $this->ensureManager($request);
         $user = $request->user();
 
         $pendingRequests = LeaveRequest::with(['user'])
@@ -101,8 +106,10 @@ class ManagerController extends Controller
     /**
      * Show a specific leave request for review.
      */
-    public function showRequest(LeaveRequest $leaveRequest): View
+    public function showRequest(Request $request, LeaveRequest $leaveRequest): View
     {
+        $this->ensureManager($request);
+
         // Ensure the request belongs to this manager's team
         if ($leaveRequest->manager_id !== auth()->id()) {
             abort(403, 'You can only review requests from your team.');
@@ -124,6 +131,7 @@ class ManagerController extends Controller
      */
     public function approve(Request $request, LeaveRequest $leaveRequest): RedirectResponse
     {
+        $this->ensureManager($request);
         // Ensure the request belongs to this manager's team
         if ($leaveRequest->manager_id !== $request->user()->id) {
             abort(403, 'You can only approve requests from your team.');
@@ -159,6 +167,7 @@ class ManagerController extends Controller
      */
     public function deny(Request $request, LeaveRequest $leaveRequest): RedirectResponse
     {
+        $this->ensureManager($request);
         // Ensure the request belongs to this manager's team
         if ($leaveRequest->manager_id !== $request->user()->id) {
             abort(403, 'You can only deny requests from your team.');
@@ -196,11 +205,12 @@ class ManagerController extends Controller
      */
     public function teamCalendar(Request $request): View
     {
+        $this->ensureManager($request);
         $user = $request->user();
 
         // Get month and year from request, default to current
-        $month = $request->get('month', now()->month);
-        $year = $request->get('year', now()->year);
+        $month = (int) $request->get('month', now()->month);
+        $year = (int) $request->get('year', now()->year);
 
         $startDate = now()->setYear($year)->setMonth($month)->startOfMonth();
         $endDate = $startDate->copy()->endOfMonth();
@@ -236,6 +246,86 @@ class ManagerController extends Controller
             'teamSize' => $user->directReports()->count(),
             'dailyAvailability' => $dailyAvailability,
             'monthAvailability' => $monthAvailability,
+        ]);
+    }
+
+    /**
+     * Display team status showing who's on leave and who's available.
+     */
+    public function teamStatus(Request $request): View
+    {
+        $this->ensureManager($request);
+        $user = $request->user();
+
+        // Get date from request, default to today
+        $date = $request->filled('date') ? now()->parse($request->date) : now();
+
+        // Get all team members
+        $teamMembers = $user->directReports()->get();
+
+        // Build team status data
+        $teamStatus = [];
+        $onLeaveCount = 0;
+        $availableCount = 0;
+
+        foreach ($teamMembers as $member) {
+            // Check if member has leave on this date
+            $currentLeave = $member->leaveRequests()
+                ->where('status', 'approved')
+                ->where('start_date', '<=', $date->format('Y-m-d'))
+                ->where('end_date', '>=', $date->format('Y-m-d'))
+                ->first();
+
+            // Check for upcoming approved leave (within next 7 days)
+            $upcomingLeave = $member->leaveRequests()
+                ->where('status', 'approved')
+                ->where('start_date', '>', $date->format('Y-m-d'))
+                ->where('start_date', '<=', $date->copy()->addDays(7)->format('Y-m-d'))
+                ->orderBy('start_date')
+                ->first();
+
+            $status = 'available';
+            $leaveInfo = null;
+
+            if ($currentLeave) {
+                $status = 'on_leave';
+                $leaveInfo = $currentLeave;
+                $onLeaveCount++;
+            } else {
+                $availableCount++;
+            }
+
+            $teamStatus[] = [
+                'member' => $member,
+                'status' => $status,
+                'current_leave' => $currentLeave,
+                'upcoming_leave' => $upcomingLeave,
+            ];
+        }
+
+        // Sort: on leave first, then by name
+        usort($teamStatus, function ($a, $b) {
+            if ($a['status'] === 'on_leave' && $b['status'] !== 'on_leave') {
+                return -1;
+            }
+            if ($a['status'] !== 'on_leave' && $b['status'] === 'on_leave') {
+                return 1;
+            }
+
+            return strcmp($a['member']->name, $b['member']->name);
+        });
+
+        // Calculate availability percentage
+        $totalTeam = $teamMembers->count();
+        $availabilityPercentage = $totalTeam > 0 ? round(($availableCount / $totalTeam) * 100, 1) : 100;
+
+        return view('manager.team-status', [
+            'teamStatus' => $teamStatus,
+            'selectedDate' => $date,
+            'onLeaveCount' => $onLeaveCount,
+            'availableCount' => $availableCount,
+            'totalTeam' => $totalTeam,
+            'availabilityPercentage' => $availabilityPercentage,
         ]);
     }
 }
