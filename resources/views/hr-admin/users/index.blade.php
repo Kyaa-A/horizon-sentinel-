@@ -5,7 +5,7 @@
                 <h2 class="text-2xl font-bold text-gray-800">
                     User Management
                 </h2>
-                <a href="{{ route('hr-admin.users.create') }}" class="rounded-md bg-navy-600 px-4 py-2 text-sm font-medium text-white hover:bg-navy-700">
+                <a href="{{ route('hr-admin.users.create') }}" class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 shadow-sm">
                     Add New User
                 </a>
             </div>

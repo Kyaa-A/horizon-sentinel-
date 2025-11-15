@@ -34,11 +34,11 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'in:employee,manager'],
-            'manager_id' => ['required_if:role,employee', 'nullable', 'exists:users,id'],
+            'manager_id' => ['required', 'exists:users,id'],
         ]);
 
-        // If registering as manager, ensure manager_id is null
-        $managerId = $request->role === 'manager' ? null : $request->manager_id;
+        // Use the provided manager_id for both employees and managers
+        $managerId = $request->manager_id;
 
         $user = User::create([
             'name' => $request->name,

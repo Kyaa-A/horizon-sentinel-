@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class LeaveRequestSubmitted extends Notification implements ShouldQueue
+class LeaveRequestSubmitted extends Notification
 {
     use Queueable;
 

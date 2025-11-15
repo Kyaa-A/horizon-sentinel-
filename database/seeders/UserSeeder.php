@@ -24,13 +24,13 @@ class UserSeeder extends Seeder
             'department' => 'Human Resources',
         ]);
 
-        // Create 2 managers (no manager_id)
+        // Create 2 managers (reporting to HR Admin)
         $manager1 = User::create([
             'name' => 'Sarah Johnson',
             'email' => 'sarah.johnson@horizondynamics.com',
             'password' => Hash::make('password'),
             'role' => 'manager',
-            'manager_id' => null,
+            'manager_id' => $hrAdmin->id,
             'department' => 'Engineering',
         ]);
 
@@ -39,7 +39,7 @@ class UserSeeder extends Seeder
             'email' => 'michael.chen@horizondynamics.com',
             'password' => Hash::make('password'),
             'role' => 'manager',
-            'manager_id' => null,
+            'manager_id' => $hrAdmin->id,
             'department' => 'Product',
         ]);
 

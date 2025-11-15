@@ -55,12 +55,12 @@ class ConflictDetectionService
     }
 
     /**
-     * Get overlapping approved leaves for the given request.
+     * Get overlapping approved/pending leaves for the given request.
      */
     protected function getOverlappingLeaves(LeaveRequest $leaveRequest, int $managerId): Collection
     {
         return LeaveRequest::forManager($managerId)
-            ->approved()
+            ->whereIn('status', ['approved', 'pending'])
             ->where('id', '!=', $leaveRequest->id)
             ->where('user_id', '!=', $leaveRequest->user_id) // Exclude same employee
             ->overlapping(
@@ -99,7 +99,7 @@ class ConflictDetectionService
 
         // Count how many people would be on leave
         $overlappingCount = LeaveRequest::forManager($managerId)
-            ->approved()
+            ->whereIn('status', ['approved', 'pending'])
             ->where('id', '!=', $leaveRequest->id)
             ->overlapping(
                 $leaveRequest->start_date->format('Y-m-d'),

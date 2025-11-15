@@ -141,7 +141,7 @@ This project uses a structured task-based workflow tracked in `.cursor/.rules/`:
 - **generate-task.md**: Guide for breaking down PRD features into granular development tasks
 - **process-task-list.md**: Active task tracking with IDs (HS-SETUP-*, HS-DB-*, HS-AUTH-*, etc.), statuses, dependencies, and effort estimates
 
-When implementing features, reference the PRD and task list to ensure alignment with requirements. Tasks follow the pattern: Task ID, Description, Acceptance Criteria, Status, Estimated Effort, Dependencies.
+When implementing features, reference the PRD and task list to ensure alignment with requirements. Tasks follow the pattern: Task ID, Description, Acceptance Criteria, Status, Estimated Effort, Dependencies. 
 
 ### Database Configuration
 Default setup uses SQLite (`database/database.sqlite`). For MySQL, update `.env`:

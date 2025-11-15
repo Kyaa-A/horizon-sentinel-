@@ -99,7 +99,7 @@
                                             </span>
                                         </div>
                                         <div class="h-2 w-full rounded-full bg-gray-200">
-                                            <div class="h-2 rounded-full bg-navy-600" style="width: {{ ($breakdown->total_days / $leaveTypeBreakdown->sum('total_days')) * 100 }}%"></div>
+                                            <div class="h-2 rounded-full bg-navy-600" style="width: {{ $leaveTypeBreakdown->sum('total_days') > 0 ? ($breakdown->total_days / $leaveTypeBreakdown->sum('total_days')) * 100 : 0 }}%"></div>
                                         </div>
                                     </div>
                                 @endforeach

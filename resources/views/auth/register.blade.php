@@ -47,6 +47,23 @@
             <x-input-error :messages="$errors->get('manager_id')" class="mt-2" />
         </div>
 
+        <!-- HR Admin Selection (only for managers) -->
+        <div class="mt-4" x-show="role === 'manager'">
+            <x-input-label for="manager_id" :value="__('Reports To (HR Admin)')" />
+            <select id="hr_manager_id"
+                    name="manager_id"
+                    class="border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm block mt-1 w-full"
+                    :required="role === 'manager'">
+                <option value="">-- Select HR Admin --</option>
+                @foreach(\App\Models\User::where('role', 'hr_admin')->orderBy('name')->get() as $hrAdmin)
+                    <option value="{{ $hrAdmin->id }}" {{ old('manager_id') == $hrAdmin->id ? 'selected' : '' }}>
+                        {{ $hrAdmin->name }} ({{ $hrAdmin->email }})
+                    </option>
+                @endforeach
+            </select>
+            <x-input-error :messages="$errors->get('manager_id')" class="mt-2" />
+        </div>
+
         <!-- Password -->
         <div class="mt-4">
             <x-input-label for="password" :value="__('Password')" />

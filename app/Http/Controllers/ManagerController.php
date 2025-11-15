@@ -23,12 +23,12 @@ class ManagerController extends Controller
     }
 
     /**
-     * Check if the user is a manager.
+     * Check if the user is a manager or HR admin.
      */
     protected function ensureManager(Request $request): void
     {
-        if (! $request->user()->isManager()) {
-            abort(403, 'Access denied. Manager privileges required.');
+        if (! $request->user()->isManager() && ! $request->user()->isHRAdmin()) {
+            abort(403, 'Access denied. Manager or HR Admin privileges required.');
         }
     }
 

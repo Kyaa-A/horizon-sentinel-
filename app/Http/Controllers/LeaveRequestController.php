@@ -7,6 +7,7 @@ use App\Models\LeaveRequest;
 use App\Models\ManagerDelegation;
 use App\Notifications\LeaveRequestCancelled;
 use App\Notifications\LeaveRequestSubmitted;
+use App\Services\ConflictDetectionService;
 use App\Services\LeaveBalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,10 +18,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class LeaveRequestController extends Controller
 {
     protected LeaveBalanceService $leaveBalanceService;
+    protected ConflictDetectionService $conflictDetectionService;
 
-    public function __construct(LeaveBalanceService $leaveBalanceService)
-    {
+    public function __construct(
+        LeaveBalanceService $leaveBalanceService,
+        ConflictDetectionService $conflictDetectionService
+    ) {
         $this->leaveBalanceService = $leaveBalanceService;
+        $this->conflictDetectionService = $conflictDetectionService;
     }
 
     /**
@@ -131,6 +136,40 @@ class LeaveRequestController extends Controller
         $activeDelegate = ManagerDelegation::getActiveDelegate($user->manager_id, $request->start_date);
         if ($activeDelegate) {
             $approvingManagerId = $activeDelegate->id;
+        }
+
+        // Create a temporary leave request to check for conflicts
+        $tempLeaveRequest = new LeaveRequest([
+            'user_id' => $user->id,
+            'manager_id' => $approvingManagerId,
+            'leave_type' => $request->leave_type,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'total_days' => $totalDays,
+            'status' => 'pending',
+        ]);
+
+        // Check for conflicts with existing approved/pending leaves
+        $conflicts = $this->conflictDetectionService->checkConflicts($tempLeaveRequest, $approvingManagerId);
+
+        // Filter for team overlap conflicts (warn about pending/approved leaves)
+        $teamConflicts = collect($conflicts)->filter(function ($conflict) {
+            return in_array($conflict['type'], ['overlap', 'availability']);
+        });
+
+        if ($teamConflicts->isNotEmpty()) {
+            $conflictMessages = $teamConflicts->map(function ($conflict) {
+                $message = $conflict['message'];
+                if (isset($conflict['details']) && is_array($conflict['details']) && isset($conflict['details'][0]['employee'])) {
+                    $employees = collect($conflict['details'])->pluck('employee')->join(', ');
+                    $message .= ": {$employees}";
+                }
+                return $message;
+            })->join(' | ');
+
+            return back()
+                ->withErrors(['conflict' => "⚠️ Team Conflict Detected: {$conflictMessages}. Your request can still be submitted, but your manager will need to review team availability."])
+                ->withInput();
         }
 
         // Create the leave request
