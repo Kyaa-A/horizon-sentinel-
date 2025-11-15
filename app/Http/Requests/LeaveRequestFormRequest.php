@@ -42,6 +42,12 @@ class LeaveRequestFormRequest extends FormRequest
                 'string',
                 'max:1000',
             ],
+            'attachment' => [
+                'nullable',
+                'file',
+                'mimes:pdf,jpg,jpeg,png,doc,docx',
+                'max:5120', // 5MB max
+            ],
         ];
     }
 
@@ -57,6 +63,7 @@ class LeaveRequestFormRequest extends FormRequest
             'start_date' => 'start date',
             'end_date' => 'end date',
             'employee_notes' => 'notes',
+            'attachment' => 'attachment',
         ];
     }
 
@@ -71,6 +78,8 @@ class LeaveRequestFormRequest extends FormRequest
             'leave_type.in' => 'Please select a valid leave type.',
             'start_date.after_or_equal' => 'Start date cannot be in the past.',
             'end_date.after_or_equal' => 'End date must be on or after the start date.',
+            'attachment.mimes' => 'Attachment must be a PDF, JPG, PNG, or Word document.',
+            'attachment.max' => 'Attachment must not exceed 5MB.',
         ];
     }
 }

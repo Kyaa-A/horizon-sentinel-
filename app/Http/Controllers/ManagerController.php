@@ -3,15 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeaveRequest;
+use App\Models\ManagerDelegation;
+use App\Models\User;
+use App\Notifications\LeaveRequestApproved;
+use App\Notifications\LeaveRequestDenied;
 use App\Services\ConflictDetectionService;
+use App\Services\LeaveBalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ManagerController extends Controller
 {
-    public function __construct(protected ConflictDetectionService $conflictService)
-    {
+    public function __construct(
+        protected ConflictDetectionService $conflictService,
+        protected LeaveBalanceService $leaveBalanceService
+    ) {
         //
     }
 
@@ -154,11 +161,30 @@ class ManagerController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        // Deduct from balance (move from pending to used)
+        try {
+            $this->leaveBalanceService->deductFromBalance($leaveRequest->id);
+        } catch (\Exception $e) {
+            // If balance deduction fails, revert the approval
+            $leaveRequest->update([
+                'status' => 'pending',
+                'manager_notes' => null,
+                'reviewed_at' => null,
+            ]);
+
+            return back()->withErrors([
+                'balance' => 'Failed to deduct balance: '.$e->getMessage(),
+            ]);
+        }
+
         $leaveRequest->recordHistory(
             'approved',
             $request->user()->id,
             'Approved by manager'.($request->manager_notes ? ': '.$request->manager_notes : '')
         );
+
+        // Send notification to employee
+        $leaveRequest->user->notify(new LeaveRequestApproved($leaveRequest));
 
         return redirect()
             ->route('manager.pending-requests')
@@ -192,11 +218,25 @@ class ManagerController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        // Restore balance (move from pending back to available)
+        try {
+            $this->leaveBalanceService->restoreToBalance($leaveRequest->id);
+        } catch (\Exception $e) {
+            // Log the error but don't fail the denial
+            logger()->error('Failed to restore balance on denial', [
+                'leave_request_id' => $leaveRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $leaveRequest->recordHistory(
             'denied',
             $request->user()->id,
             'Denied by manager: '.$request->manager_notes
         );
+
+        // Send notification to employee
+        $leaveRequest->user->notify(new LeaveRequestDenied($leaveRequest));
 
         return redirect()
             ->route('manager.pending-requests')
@@ -280,10 +320,10 @@ class ManagerController extends Controller
                                     ->where('end_date', '>=', $dateFormatted);
                             })
                             // OR upcoming leave: starts within next 7 days
-                            ->orWhere(function ($subQ) use ($dateFormatted, $weekLaterFormatted) {
-                                $subQ->where('start_date', '>', $dateFormatted)
-                                    ->where('start_date', '<=', $weekLaterFormatted);
-                            });
+                                ->orWhere(function ($subQ) use ($dateFormatted, $weekLaterFormatted) {
+                                    $subQ->where('start_date', '>', $dateFormatted)
+                                        ->where('start_date', '<=', $weekLaterFormatted);
+                                });
                         })
                         ->orderBy('start_date');
                 },
@@ -353,5 +393,125 @@ class ManagerController extends Controller
             'totalTeam' => $totalTeam,
             'availabilityPercentage' => $availabilityPercentage,
         ]);
+    }
+
+    /**
+     * Display delegation management page.
+     */
+    public function delegations(Request $request): View
+    {
+        $this->ensureManager($request);
+        $user = $request->user();
+
+        // Get all delegations for this manager
+        $delegations = ManagerDelegation::forManager($user->id)
+            ->with(['delegate'])
+            ->orderBy('start_date', 'desc')
+            ->paginate(10);
+
+        // Get all other managers who can be delegates
+        $availableDelegates = User::where('role', 'manager')
+            ->where('id', '!=', $user->id)
+            ->orderBy('name')
+            ->get();
+
+        return view('manager.delegations', [
+            'delegations' => $delegations,
+            'availableDelegates' => $availableDelegates,
+        ]);
+    }
+
+    /**
+     * Store a new delegation.
+     */
+    public function storeDelegation(Request $request): RedirectResponse
+    {
+        $this->ensureManager($request);
+
+        $validated = $request->validate([
+            'delegate_manager_id' => ['required', 'exists:users,id'],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'end_date' => ['required', 'date', 'after:start_date'],
+        ], [
+            'delegate_manager_id.required' => 'Please select a delegate manager.',
+            'delegate_manager_id.exists' => 'Selected delegate manager does not exist.',
+            'start_date.required' => 'Start date is required.',
+            'start_date.after_or_equal' => 'Start date must be today or later.',
+            'end_date.required' => 'End date is required.',
+            'end_date.after' => 'End date must be after the start date.',
+        ]);
+
+        // Verify the delegate is actually a manager
+        $delegate = User::findOrFail($validated['delegate_manager_id']);
+        if (!$delegate->isManager()) {
+            return back()->withErrors(['delegate_manager_id' => 'Selected user is not a manager.']);
+        }
+
+        // Verify not delegating to self
+        if ($delegate->id === $request->user()->id) {
+            return back()->withErrors(['delegate_manager_id' => 'You cannot delegate to yourself.']);
+        }
+
+        // Check for overlapping delegations
+        $overlapping = ManagerDelegation::forManager($request->user()->id)
+            ->where('is_active', true)
+            ->where(function ($query) use ($validated) {
+                $query->whereBetween('start_date', [$validated['start_date'], $validated['end_date']])
+                    ->orWhereBetween('end_date', [$validated['start_date'], $validated['end_date']])
+                    ->orWhere(function ($q) use ($validated) {
+                        $q->where('start_date', '<=', $validated['start_date'])
+                            ->where('end_date', '>=', $validated['end_date']);
+                    });
+            })
+            ->exists();
+
+        if ($overlapping) {
+            return back()->withErrors(['start_date' => 'A delegation already exists for this date range.']);
+        }
+
+        // Create the delegation
+        ManagerDelegation::create([
+            'manager_id' => $request->user()->id,
+            'delegate_manager_id' => $validated['delegate_manager_id'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('manager.delegations')->with('success', 'Delegation created successfully.');
+    }
+
+    /**
+     * Deactivate a delegation.
+     */
+    public function deactivateDelegation(Request $request, ManagerDelegation $delegation): RedirectResponse
+    {
+        $this->ensureManager($request);
+
+        // Verify the delegation belongs to this manager
+        if ($delegation->manager_id !== $request->user()->id) {
+            abort(403, 'Unauthorized to deactivate this delegation.');
+        }
+
+        $delegation->update(['is_active' => false]);
+
+        return redirect()->route('manager.delegations')->with('success', 'Delegation deactivated successfully.');
+    }
+
+    /**
+     * Delete a delegation.
+     */
+    public function destroyDelegation(Request $request, ManagerDelegation $delegation): RedirectResponse
+    {
+        $this->ensureManager($request);
+
+        // Verify the delegation belongs to this manager
+        if ($delegation->manager_id !== $request->user()->id) {
+            abort(403, 'Unauthorized to delete this delegation.');
+        }
+
+        $delegation->delete();
+
+        return redirect()->route('manager.delegations')->with('success', 'Delegation deleted successfully.');
     }
 }

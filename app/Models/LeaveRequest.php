@@ -23,9 +23,11 @@ class LeaveRequest extends Model
         'leave_type',
         'start_date',
         'end_date',
+        'total_days',
         'status',
         'employee_notes',
         'manager_notes',
+        'attachment_path',
         'submitted_at',
         'reviewed_at',
     ];
@@ -158,5 +160,81 @@ class LeaveRequest extends Model
             'performed_by_user_id' => $performedByUserId,
             'notes' => $notes,
         ]);
+    }
+
+    /**
+     * Get the duration in days (formatted).
+     */
+    public function getDurationAttribute(): string
+    {
+        if ($this->total_days == 1) {
+            return '1 day';
+        }
+
+        return $this->total_days . ' days';
+    }
+
+    /**
+     * Get the formatted date range.
+     */
+    public function getDateRangeAttribute(): string
+    {
+        if ($this->start_date->eq($this->end_date)) {
+            return $this->start_date->format('M j, Y');
+        }
+
+        return $this->start_date->format('M j, Y') . ' - ' . $this->end_date->format('M j, Y');
+    }
+
+    /**
+     * Get the status badge class for display.
+     */
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return match ($this->status) {
+            'pending' => 'bg-yellow-100 text-yellow-800',
+            'approved' => 'bg-green-100 text-green-800',
+            'denied' => 'bg-red-100 text-red-800',
+            'cancelled' => 'bg-gray-100 text-gray-800',
+            default => 'bg-gray-100 text-gray-800',
+        };
+    }
+
+    /**
+     * Get human-readable leave type.
+     */
+    public function getLeaveTypeNameAttribute(): string
+    {
+        return match ($this->leave_type) {
+            'paid_time_off' => 'PTO',
+            'unpaid_leave' => 'Unpaid Leave',
+            'sick_leave' => 'Sick Leave',
+            'vacation' => 'Vacation',
+            default => ucfirst(str_replace('_', ' ', $this->leave_type)),
+        };
+    }
+
+    /**
+     * Check if the request has an attachment.
+     */
+    public function hasAttachment(): bool
+    {
+        return $this->attachment_path !== null;
+    }
+
+    /**
+     * Check if the request can be cancelled.
+     */
+    public function canBeCancelled(): bool
+    {
+        return in_array($this->status, ['pending', 'approved']);
+    }
+
+    /**
+     * Check if the request can be edited.
+     */
+    public function canBeEdited(): bool
+    {
+        return $this->status === 'pending';
     }
 }

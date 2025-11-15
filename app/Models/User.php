@@ -25,6 +25,7 @@ class User extends Authenticatable
         'password',
         'role',
         'manager_id',
+        'department',
     ];
 
     /**
@@ -96,5 +97,66 @@ class User extends Authenticatable
     public function hasManager(): bool
     {
         return $this->manager_id !== null;
+    }
+
+    /**
+     * Check if the user is an HR admin.
+     */
+    public function isHRAdmin(): bool
+    {
+        return $this->role === 'hr_admin';
+    }
+
+    /**
+     * Get all leave balances for this user.
+     */
+    public function leaveBalances(): HasMany
+    {
+        return $this->hasMany(LeaveBalance::class);
+    }
+
+    /**
+     * Get leave balance for a specific type and year.
+     */
+    public function getLeaveBalance(string $leaveType, ?int $year = null): ?LeaveBalance
+    {
+        $year = $year ?? now()->year;
+
+        return $this->leaveBalances()
+            ->where('leave_type', $leaveType)
+            ->where('year', $year)
+            ->first();
+    }
+
+    /**
+     * Get all delegations where this user is the manager.
+     */
+    public function delegations(): HasMany
+    {
+        return $this->hasMany(ManagerDelegation::class, 'manager_id');
+    }
+
+    /**
+     * Get all delegations where this user is the delegate.
+     */
+    public function delegateFor(): HasMany
+    {
+        return $this->hasMany(ManagerDelegation::class, 'delegate_manager_id');
+    }
+
+    /**
+     * Get the current active delegate for this manager.
+     */
+    public function getCurrentDelegate(): ?User
+    {
+        return ManagerDelegation::getActiveDelegate($this->id);
+    }
+
+    /**
+     * Check if user can approve leave requests (manager or HR admin).
+     */
+    public function canApproveLeaveRequests(): bool
+    {
+        return $this->isManager() || $this->isHRAdmin();
     }
 }

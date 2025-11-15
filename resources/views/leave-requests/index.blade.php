@@ -120,8 +120,15 @@
                                                         </svg>
                                                     </div>
                                                     <div class="ml-4">
-                                                        <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                                            {{ ucwords(str_replace('_', ' ', $request->leave_type)) }}
+                                                        <div class="flex items-center gap-2">
+                                                            <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                                {{ ucwords(str_replace('_', ' ', $request->leave_type)) }}
+                                                            </div>
+                                                            @if ($request->hasAttachment())
+                                                                <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Has attachment">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                                </svg>
+                                                            @endif
                                                         </div>
                                                     </div>
                                                 </div>

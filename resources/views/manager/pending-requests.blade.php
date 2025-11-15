@@ -52,7 +52,14 @@
                                                     <svg class="h-5 w-5 text-primary-600 dark:text-primary-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                                                     </svg>
-                                                    <span class="font-semibold text-gray-900 dark:text-gray-100">{{ ucwords(str_replace('_', ' ', $request->leave_type)) }}</span>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="font-semibold text-gray-900 dark:text-gray-100">{{ ucwords(str_replace('_', ' ', $request->leave_type)) }}</span>
+                                                        @if ($request->hasAttachment())
+                                                            <svg class="h-4 w-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Has attachment">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                            </svg>
+                                                        @endif
+                                                    </div>
                                                 </div>
 
                                                 <div class="flex items-center text-sm">

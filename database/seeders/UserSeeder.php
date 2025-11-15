@@ -15,6 +15,15 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
+        // Create HR Admin
+        $hrAdmin = User::create([
+            'name' => 'Patricia Williams',
+            'email' => 'hr@horizondynamics.com',
+            'password' => Hash::make('password'),
+            'role' => 'hr_admin',
+            'department' => 'Human Resources',
+        ]);
+
         // Create 2 managers (no manager_id)
         $manager1 = User::create([
             'name' => 'Sarah Johnson',
@@ -22,6 +31,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'manager',
             'manager_id' => null,
+            'department' => 'Engineering',
         ]);
 
         $manager2 = User::create([
@@ -30,15 +40,17 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'manager',
             'manager_id' => null,
+            'department' => 'Product',
         ]);
 
-        // Create employees reporting to Manager 1
+        // Create employees reporting to Manager 1 (Engineering)
         User::create([
             'name' => 'Emily Rodriguez',
             'email' => 'emily.rodriguez@horizondynamics.com',
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager1->id,
+            'department' => 'Engineering',
         ]);
 
         User::create([
@@ -47,6 +59,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager1->id,
+            'department' => 'Engineering',
         ]);
 
         User::create([
@@ -55,6 +68,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager1->id,
+            'department' => 'Engineering',
         ]);
 
         User::create([
@@ -63,6 +77,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager1->id,
+            'department' => 'Engineering',
         ]);
 
         User::create([
@@ -71,15 +86,17 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager1->id,
+            'department' => 'Engineering',
         ]);
 
-        // Create employees reporting to Manager 2
+        // Create employees reporting to Manager 2 (Product)
         User::create([
             'name' => 'Robert Kim',
             'email' => 'robert.kim@horizondynamics.com',
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager2->id,
+            'department' => 'Product',
         ]);
 
         User::create([
@@ -88,6 +105,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager2->id,
+            'department' => 'Product',
         ]);
 
         User::create([
@@ -96,6 +114,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager2->id,
+            'department' => 'Product',
         ]);
 
         User::create([
@@ -104,6 +123,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager2->id,
+            'department' => 'Product',
         ]);
 
         User::create([
@@ -112,6 +132,13 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'manager_id' => $manager2->id,
+            'department' => 'Product',
         ]);
+
+        $this->command->info('Created ' . User::count() . ' users:');
+        $this->command->info('- 1 HR Admin (hr@horizondynamics.com)');
+        $this->command->info('- 2 Managers');
+        $this->command->info('- 10 Employees');
+        $this->command->info('Default password for all users: password');
     }
 }

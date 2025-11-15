@@ -15,8 +15,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            UserSeeder::class,
-            LeaveRequestSeeder::class,
+            CompanyHolidaySeeder::class,  // First: holidays needed for working day calculations
+            UserSeeder::class,             // Second: users needed for everything else
+            LeaveBalanceSeeder::class,     // Third: balances for leave requests
+            LeaveRequestSeeder::class,     // Last: leave requests depend on all above
         ]);
     }
 }

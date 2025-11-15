@@ -33,7 +33,7 @@
                         </div>
                     </div>
 
-                    <form method="POST" action="{{ route('leave-requests.store') }}" class="space-y-6">
+                    <form method="POST" action="{{ route('leave-requests.store') }}" enctype="multipart/form-data" class="space-y-6">
                         @csrf
 
                         <!-- Leave Type -->
@@ -139,6 +139,31 @@
                                 Maximum 1000 characters
                             </p>
                             @error('employee_notes')
+                                <p class="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center">
+                                    <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <!-- Attachment -->
+                        <div>
+                            <label for="attachment" class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                                Supporting Document <span class="text-gray-500 text-xs">(Optional)</span>
+                            </label>
+                            <div class="relative">
+                                <input type="file" id="attachment" name="attachment" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                       class="block w-full text-sm text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-900 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-500 focus:ring-opacity-20 file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-600 file:text-white hover:file:bg-primary-700 transition-all duration-200">
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Accepted formats: PDF, JPG, PNG, DOC, DOCX (Max 5MB)
+                            </p>
+                            @error('attachment')
                                 <p class="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center">
                                     <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />

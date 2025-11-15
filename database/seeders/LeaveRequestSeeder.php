@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\CompanyHoliday;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use Carbon\Carbon;
@@ -9,6 +10,14 @@ use Illuminate\Database\Seeder;
 
 class LeaveRequestSeeder extends Seeder
 {
+    /**
+     * Calculate working days between two dates.
+     */
+    private function calculateWorkingDays(string $startDate, string $endDate): int
+    {
+        return CompanyHoliday::countWorkingDays($startDate, $endDate);
+    }
+
     /**
      * Run the database seeds.
      */
@@ -35,12 +44,15 @@ class LeaveRequestSeeder extends Seeder
 
         // 1. PENDING REQUESTS
         if ($employee1 = $manager1Employees->first()) {
+            $startDate = Carbon::now()->addDays(10)->format('Y-m-d');
+            $endDate = Carbon::now()->addDays(14)->format('Y-m-d');
             $request = LeaveRequest::create([
                 'user_id' => $employee1->id,
                 'manager_id' => $employee1->manager_id,
                 'leave_type' => 'vacation',
-                'start_date' => Carbon::now()->addDays(10)->format('Y-m-d'),
-                'end_date' => Carbon::now()->addDays(14)->format('Y-m-d'),
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'total_days' => $this->calculateWorkingDays($startDate, $endDate),
                 'status' => 'pending',
                 'employee_notes' => 'Planning a family vacation to the beach.',
                 'submitted_at' => Carbon::now()->subDays(2),
@@ -49,12 +61,15 @@ class LeaveRequestSeeder extends Seeder
         }
 
         if ($employee2 = $manager1Employees->skip(1)->first()) {
+            $startDate = Carbon::now()->addDays(5)->format('Y-m-d');
+            $endDate = Carbon::now()->addDays(7)->format('Y-m-d');
             $request = LeaveRequest::create([
                 'user_id' => $employee2->id,
                 'manager_id' => $employee2->manager_id,
                 'leave_type' => 'sick_leave',
-                'start_date' => Carbon::now()->addDays(5)->format('Y-m-d'),
-                'end_date' => Carbon::now()->addDays(7)->format('Y-m-d'),
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'total_days' => $this->calculateWorkingDays($startDate, $endDate),
                 'status' => 'pending',
                 'employee_notes' => 'Medical appointment scheduled.',
                 'submitted_at' => Carbon::now()->subDays(1),
@@ -63,12 +78,15 @@ class LeaveRequestSeeder extends Seeder
         }
 
         if ($employee3 = $manager2Employees->first()) {
+            $startDate = Carbon::now()->addDays(20)->format('Y-m-d');
+            $endDate = Carbon::now()->addDays(25)->format('Y-m-d');
             $request = LeaveRequest::create([
                 'user_id' => $employee3->id,
                 'manager_id' => $employee3->manager_id,
                 'leave_type' => 'paid_time_off',
-                'start_date' => Carbon::now()->addDays(20)->format('Y-m-d'),
-                'end_date' => Carbon::now()->addDays(25)->format('Y-m-d'),
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'total_days' => $this->calculateWorkingDays($startDate, $endDate),
                 'status' => 'pending',
                 'employee_notes' => 'Need some time to recharge.',
                 'submitted_at' => Carbon::now(),
